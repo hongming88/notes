@@ -96,6 +96,12 @@ netstat -aptn
 
 
 
+如果在某云服务器，注意增加安全组策略
+
+
+
+
+
 附上几条防火墙命令：
 
 service iptables status # 查看iptables状态
