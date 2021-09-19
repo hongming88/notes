@@ -10,7 +10,7 @@ yum install gcc
 
 yum --version
 
-![安装第一步](../pics/redis/安装第一步.jpg)
+![安装第一步](../../pics/redis/安装第一步.jpg)
 
 ## 第二步
 
@@ -30,7 +30,7 @@ tar -zxvf redis-6.2.1.tar.gz
 
 成功后：
 
-![安装第一步](../pics/redis/安装第二步.jpg)
+![安装第一步](../../pics/redis/安装第二步.jpg)
 
 
 
