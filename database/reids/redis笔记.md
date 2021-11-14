@@ -108,5 +108,11 @@ service iptables status # 查看iptables状态
 service iptables restart # iptables服务重启
 service iptables stop  # iptables服务禁用
 
+# windows安装配置
 
+windows下载:`redis-server.exe redis.windows.conf`
+
+修改配置文件在`redis.windows.conf`
+
+下载地址：https://github.com/tporadowski/redis/releases
 
