@@ -56,7 +56,7 @@ Mysql：
 
 
 
-什么时候用mongo
+## 什么时候用mongo
 
 **日志系统**
 
@@ -199,3 +199,57 @@ vue @click.native 原生点击事件：
 
 
 根据Vue2.0官方文档关于父子组件通讯的原则，父组件通过prop传递数据给子组件，子组件触发事件给父组件。但父组件想在子组件上监听自己的click的话，需要加上`native`修饰符，故写法就像上面这样。
+
+
+
+
+
+# transient
+
+`private transient DataSource datasource = null;`
+请问此中的transient起什么作用？
+
+
+
+比如说要在网络上传输一个Class，而其中有一属性不想被传送，这一项设为transient就不会被序列化传送
+
+
+
+@transient 就是在给某个javabean上需要添加个属性，但是这个属性你又不希望给存到数据库中去，仅仅是做个临时变量，用一下。不修改已经存在数据库的数据的数据结构。
+
+
+
+transient使用小结 
+
+1）一旦变量被transient修饰，变量将不再是对象持久化的一部分，该变量内容在序列化后无法获得访问。
+
+2）transient关键字只能修饰变量，而不能修饰方法和类。注意，本地变量是不能被transient关键字修饰的。变量如果是用户自定义类变量，则该类需要实现Serializable接口。
+
+3）被transient关键字修饰的变量不再能被序列化，一个静态变量不管是否被transient修饰，均不能被序列化。
+
+总之，java 的transient关键字为我们提供了便利，你只需要实现Serilizable接口，将不需要序列化的属性前添加关键字transient，序列化对象的时候，这个属性就不会序列化到指定的目的地中。
+
+
+
+## 序列化：
+
+无论你是保存到本地，还是通过网线传输，信息都要转化成“00111011”的样子。注意这两个场景：
+
+- 本地存储
+- 网络传输
+
+实在记不住的话只记住一点即可：**凡是离开内存的信息都要进行序列化**。
+
+序列化的意思是:==将一个对象转换为可传输的数据.==
+
+
+
+**java序列化后不能用python反序列化，但两种语言可以用json进行传递解析。**
+
+
+
+也就是你Python序列化后的字节流，你自己清楚该怎么反序列回去，而我Java则是按照自己的序列化规则走，因此，就导致，双方无法通过序列化后的字节流进行交流。
+
+
+
+https://blog.csdn.net/Appleyk/article/details/78052900?utm_medium=distribute.pc_relevant.none-task-blog-BlogCommendFromMachineLearnPai2-5.nonecase&depth_1-utm_source=distribute.pc_relevant.none-task-blog-BlogCommendFromMachineLearnPai2-5.nonecase
