@@ -257,7 +257,7 @@ l SERIALIZABLE 保证所有的情况不会发生(锁表)
 
 
 
-
+# java
 
 # transient
 
@@ -284,7 +284,7 @@ transient使用小结
 
 总之，java 的transient关键字为我们提供了便利，你只需要实现Serilizable接口，将不需要序列化的属性前添加关键字transient，序列化对象的时候，这个属性就不会序列化到指定的目的地中。
 
-
+# 
 
 ## 序列化：
 
@@ -295,7 +295,7 @@ transient使用小结
 
 实在记不住的话只记住一点即可：**凡是离开内存的信息都要进行序列化**。
 
-序列化的意思是:==将一个对象转换为可传输的数据.==
+序列化的意思是:==将一个对象转换为可传输的数据.== 变成字节码
 
 
 
@@ -308,3 +308,8 @@ transient使用小结
 
 
 https://blog.csdn.net/Appleyk/article/details/78052900?utm_medium=distribute.pc_relevant.none-task-blog-BlogCommendFromMachineLearnPai2-5.nonecase&depth_1-utm_source=distribute.pc_relevant.none-task-blog-BlogCommendFromMachineLearnPai2-5.nonecase
+
+## 为什么注入接口
+
+通常是service层需要aop。用接口的话，AOP可以使用java自带的动态代理，但是有点麻烦要写接口。用类就要用第三方包cglib，但是简单，不用写接口
+jdk规定动态代理必须用接口；当然也可以用类，用cglib可以去处理就可以了
