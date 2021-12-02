@@ -243,6 +243,8 @@ l SERIALIZABLE 保证所有的情况不会发生(锁表)
 
 # spring
 
+## 注入
+
 一个接口下多个类
 
 类上写@service（“userDaoImpl1”）
@@ -259,6 +261,119 @@ l SERIALIZABLE 保证所有的情况不会发生(锁表)
 
 # java
 
+## 静态
+
+与类无关的方法idea会推荐静态
+
+**如果有注入**，方法中使用了，不能使用静态
+
+
+
+```
+@Autowired 
+private static JdbcTemplate jdbcTemplate;
+```
+
+单纯看这个注入过程是没有报错的,但是在接下来的`jdbcTemplate.query()`会报空指针错误.
+
+
+
+为什么呢?静态变量/类变量不是对象的属性,而是一个类的属性,spring则是基于对象层面上的依赖注入。
+
+意思就是：**我们注入相当于创建的是对象，不能用static修饰,类变量才能用static**
+
+
+
+## Spring静态注入
+
+xml方式实现；
+
+```
+<bean id="mongoFileOperationUtil" class="com.*.*.MongoFileOperationUtil" init-method="init">
+	<property name="dsForRW" ref="dsForRW"/>
+</bean>
+```
+
+```java
+public class MongoFileOperationUtil {
+    
+    private static AdvancedDatastore dsForRW;
+ 
+    private static MongoFileOperationUtil mongoFileOperationUtil;
+ 
+    public void init() {
+        mongoFileOperationUtil = this;
+        mongoFileOperationUtil.dsForRW = this.dsForRW;
+    }
+ 
+}
+```
+
+
+
+
+
+
+
+`@PostConstruct`方式实现
+
+```java
+import org.mongodb.morphia.AdvancedDatastore;
+import org.springframework.beans.factory.annotation.Autowired;
+ 
+ 
+@Component
+public class MongoFileOperationUtil {
+    @Autowired
+    private static AdvancedDatastore dsForRW;
+ 
+    private static MongoFileOperationUtil mongoFileOperationUtil;
+ 
+    @PostConstruct
+    public void init() {
+        mongoFileOperationUtil = this;
+        mongoFileOperationUtil.dsForRW = this.dsForRW;
+    }
+ 
+}
+```
+
+
+
+@PostConstruct 注解的方法在加载类的构造函数之后执行，也就是在加载了构造函数之后，执行init方法；(@PreDestroy 注解定义容器销毁之前的所做的操作)
+
+这种方式和在xml中配置 init-method和 destory-method方法差不多，定义spring 容器在初始化bean 和容器销毁之前的所做的操作；
+
+
+
+3.set方法上添加@Autowired注解，类定义上添加@Component注解；
+
+```java
+import org.mongodb.morphia.AdvancedDatastore;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+ 
+ 
+@Component
+public class MongoFileOperationUtil {
+ 
+    private static AdvancedDatastore dsForRW;
+    
+    @Autowired
+    public void setDatastore(AdvancedDatastore dsForRW) {
+        MongoFileOperationUtil.dsForRW = dsForRW;
+    }
+}
+```
+
+首先Spring要能扫描到AdvancedDatastore的bean，然后通过setter方法注入；
+
+然后注意：成员变量上不需要再添加@Autowired注解；
+
+
+
+
+
 # transient
 
 `private transient DataSource datasource = null;`
@@ -270,7 +385,7 @@ l SERIALIZABLE 保证所有的情况不会发生(锁表)
 
 
 
-@transient 就是在给某个javabean上需要添加个属性，但是这个属性你又不希望给存到数据库中去，仅仅是做个临时变量，用一下。不修改已经存在数据库的数据的数据结构。
+`@transient `就是在给某个javabean上需要添加个属性，但是这个属性你又不希望给存到数据库中去，**仅仅是做个临时变量**，用一下。不修改已经存在数据库的数据的数据结构。
 
 
 
@@ -308,6 +423,11 @@ transient使用小结
 
 
 https://blog.csdn.net/Appleyk/article/details/78052900?utm_medium=distribute.pc_relevant.none-task-blog-BlogCommendFromMachineLearnPai2-5.nonecase&depth_1-utm_source=distribute.pc_relevant.none-task-blog-BlogCommendFromMachineLearnPai2-5.nonecase
+
+
+
+
+
 
 ## 为什么注入接口
 
