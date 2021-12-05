@@ -433,3 +433,117 @@ https://blog.csdn.net/Appleyk/article/details/78052900?utm_medium=distribute.pc_
 
 通常是service层需要aop。用接口的话，AOP可以使用java自带的动态代理，但是有点麻烦要写接口。用类就要用第三方包cglib，但是简单，不用写接口
 jdk规定动态代理必须用接口；当然也可以用类，用cglib可以去处理就可以了
+
+# 日志
+
+
+
+## 为什么
+
+代码改好了怎么办？当然是删除没有用的`System.out.println()`语句了。
+
+如果改代码又改出问题怎么办？再加上`System.out.println()`。
+
+反复这么搞几次，很快大家就发现使用`System.out.println()`非常麻烦。
+
+怎么办？
+
+解决方法是使用日志。
+
+那什么是日志？日志就是Logging，它的目的是为了取代`System.out.println()`。
+
+输出日志，而不是用`System.out.println()`，有以下几个好处：
+
+1. 可以设置输出样式，避免自己每次都写`"ERROR: " + var`；
+2. 可以设置输出级别，禁止某些级别输出。例如，只输出错误日志；
+3. 可以被重定向到文件，这样可以在程序运行结束后查看日志；
+4. 可以按包名控制日志级别，只输出某些包打的日志；
+5. 可以……
+
+
+
+## 分类
+
+`Commons Logging`和`Log4j`这一对好基友，它们一个负责充当日志API，一个负责实现日志底层，搭配使用非常便于开发。
+
+`SLF4J`类似于`Commons Logging`，也是一个日志接口，而`Logback`类似于`Log4j`，是一个日志的实现
+
+为什么有了Commons Logging和Log4j，又会蹦出来SLF4J和Logback？这是因为Java有着非常悠久的开源历史，不但OpenJDK本身是开源的，而且我们用到的第三方库，几乎全部都是开源的。开源生态丰富的一个特定就是，同一个功能，可以找到若干种互相竞争的开源库。
+
+因为对Commons Logging的接口不满意，有人就搞了SLF4J。因为对Log4j的性能不满意，有人就搞了Logback。
+
+我们先来看看SLF4J对Commons Logging的接口有何改进。在Commons Logging中，我们要打印日志，有时候得这么写：
+
+```
+int score = 99;
+p.setScore(score);
+log.info("Set score " + score + " for Person " + p.getName() + " ok.");
+```
+
+拼字符串是一个非常麻烦的事情，所以SLF4J的日志接口改进成这样了：
+
+```
+int score = 99;
+p.setScore(score);
+logger.info("Set score {} for Person {} ok.", score, p.getName());
+```
+
+从目前的趋势来看，越来越多的开源项目从Commons Logging加Log4j转向了SLF4J加Logback。
+
+
+
+现有的日志框架
+JUL（java util logging）、logback、log4j、log4j2
+JCL（Jakarta Commons Logging）、slf4j（ Simple Logging Facade for Java）
+日志门面
+JCL、slf4j
+日志实现
+JUL、logback、log4j、log4j2
+
+
+
+### 小结
+
+日志是为了替代`System.out.println()`，可以定义格式，重定向到文件等；
+
+日志可以存档，便于追踪问题；
+
+日志记录可以按级别分类，便于打开或关闭某些级别；
+
+可以根据配置文件调整日志，无需修改代码；
+
+Java标准库提供了`java.util.logging`来实现日志功能。
+
+## JCL 学习
+
+全称为Jakarta Commons Logging，是Apache提供的一个通用日志API。
+它是为 "所有的Java日志实现"提供一个统一的接口，它自身也提供一个日志的实现，但是功能非常常弱
+（SimpleLog）。所以一般不会单独使用它。他允许开发人员使用不同的具体日志实现工具: Log4j, Jdk
+自带的日志（JUL)
+
+## 我们为什么要使用日志门面：
+
+1. 面向接口开发，不再依赖具体的实现类。减少代码的耦合
+2. 项目通过导入不同的日志实现类，可以灵活的切换日志框架
+3. 统一API，方便开发者学习和使用
+
+4. 统一配置便于项目日志的管理
+
+
+
+为什么要使用SLF4J作为日志门面？
+
+* 1. 使用SLF4J框架，可以在部署时迁移到所需的日志记录框架。
+* 2. SLF4J提供了对所有流行的日志框架的绑定，例如log4j，JUL，Simple logging和NOP。`因此可以
+     在部署时切换到任何这些流行的框架。`
+* 3. 无论使用哪种绑定，SLF4J都支持参数化日志记录消息。由于SLF4J将应用程序和日志记录框架分离，
+     因此可以轻松编写独立于日志记录框架的应用程序。而无需担心用于编写应用程序的日志记录框架。
+* 4. SLF4J提供了一个简单的Java工具，称为迁移器。使用此工具，可以迁移现有项目，这些项目使用日志
+     框架(如Jakarta Commons Logging(JCL)或log4j或Java.util.logging(JUL))到SLF4J。
+
+
+
+**如何使用SLF4J?**
+
+既然SLF4J只是一个接口，那么实际使用时必须要结合具体的日志系统来使用，不能单独使用
+
