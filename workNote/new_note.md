@@ -1,9 +1,3 @@
-
-
-
-
-
-
 # mongbd
 
 **更高的写入负载**
@@ -448,10 +442,6 @@ public class MongoFileOperationUtil {
 
 
 
-
-
-
-
 `@PostConstruct`方式实现
 
 ```java
@@ -508,6 +498,47 @@ public class MongoFileOperationUtil {
 然后注意：成员变量上不需要再添加@Autowired注解；
 
 
+
+## swich case 和if
+
+相同点:都可以实现多分支结构
+不同点:
+
+- switch:一般 **只能用于等值比较**
+- if-else if:可以**处理范围**
+
+
+
+通常而言大家普遍的认知里switch case的效率高于if else。根据我的理解而言switch的查找类似于二叉树，if则是线性查找。按照此逻辑推理对于对比条件数目大于3时switch更优，并且对比条件数目越多时switch的优势越为明显。
+
+
+
+实际应用当中，我一般遵循以下编码“潜规则”：
+1.凡是判断层级达到4层以上的，用switch结构。
+2.凡是可能性最大的选项，放在if结构的最顶端。这个思想，也是ARM公司在ARM处理器多级流水线中加入“分支预测”功能的考量之一。
+
+
+
+switch...case与if...else的根本区别在于，switch...case会生成一个`跳转表`来指示实际的case分支的地址，而这个跳转表的索引号与switch变量的值是相等的。从而，switch...case不用像if...else那样遍历条件分支直到命中条件，**而只需访问对应索引号的表项从而到达定位分支的目的。**
+
+
+
+具体地说，<font color="red">switch...case会生成一份大小（表项数）为最大case常量＋1的跳表，程序首先判断switch变量是否大于最大case 常量，若大于，则跳到default分支处理；否则取得索引号为switch变量大小的跳表项的地址（即跳表的起始地址＋表项大小＊索引号），程序接着跳到此地址执行，到此完成了分支的跳转</font>。
+
+由此看来，**switch有点以空间换时间的意思**，而事实上也的确如此。
+
+
+
+1.switch用来根据一个整型值进行多路分支，并且编译器可以对多路分支进行优化
+2.switch-case只将表达式计算一次,然后将表达式的值与每个case的值比较,进而选
+ 择执行哪一个case的语句块
+3.if..else 的判断条件范围较广，每条语句基本上独立的，每次判断时都要条件加载
+ 一次。
+所以在多路分支时用switch比if..else if .. else结构要效率高。
+
+
+
+参考链接：https://www.cnblogs.com/balingybj/p/5751707.html
 
 
 
