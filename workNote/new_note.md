@@ -176,6 +176,641 @@ element form里面如果只有一个input框的时候 按回车会提交表单�
 
 
 
+## VueX中的核心内容
+
+在VueX对象中，其实不止有`state`,还有用来操作`state`中数据的方法集，以及当我们需要对`state`中的数据需要加工的方法集等等成员。
+
+在VueX对象中，其实不止有`state`,还有用来操作`state`中数据的方法集，以及当我们需要对`state`中的数据需要加工的方法集等等成员。
+
+成员列表：
+
+- state     存放状态：全局访问的state对象，存放要设置的初始状态名及值（必须要有）
+- mutations   state成员操作 ：里面可以存放改变 state 的初始值的方法 ( 同步操作--必须要有 )
+- getters     加工state成员给外界 ：实时监听state值的变化可对状态进行处理，返回一个新的状态，相当于store的计算属性（不是必须的）
+- actions     异步操作 ：里面可以存放用来异步触发 ***\*mutations\**** 里面的方法的方法 ( 异步操作--不是必须的 )
+- modules   模块化状态管理 ：存放模块化的数据（不是必须的）
+
+
+
+<font color='red'>全局配置Vuex</font>:
+
+  在 src 目录下创建 store 文件夹,并在里面创建一个index.js文件，然后index.js中配置如下：
+
+```js
+第一步：引入Vue、和Vuex(固定写法)
+import Vue from 'vue'
+import Vuex from 'vuex'
+Vue.use(Vuex); 
+ 
+第二步：声明Vuex 的五个属性，其中state,mutations 是一定要定义的，其他的三个属性对象根据实际需要。
+const state = {  // 初始化状态值--一定要有该属性对象         
+    ...
+}
+const mutations = {  // 自定义改变state初始值的方法--一定要有该属性对象
+    ...
+}
+const getters = {  // 状态计算属性--该属性对象不是必须的            
+    ...
+}
+const actions = { // 异步操作状态--该属性对象不是必须的
+    ...
+}
+const modules = {  // 状态模块--该属性对象不是必须的
+    ...
+}
+ 
+第三步：创建一个 store 实例，将声明的五个变量赋值赋值给 store 实例，如下：
+const store = new Vuex.Store({
+   state,
+   mutations,
+    //下面三个非必须
+   getters,
+   actions,
+   modules
+})
+ 
+第四步：导出 store 实例，供外部访问
+export default store
+```
+
+在项目的main.js中将Vuex注册到全局实例中
+
+```
+...
+import store from './store'
+...
+ 
+new Vue({
+  el: '#app',
+  router,
+  store,         //注入,组件中可以使用 this.$store 获取
+  components: { App },
+})
+```
+
+
+
+## VueX的工作流程
+
+<img src=".\pics\VueX的工作流程.jpg" style="zoom:75%;" />
+
+首先，`Vue`组件如果调用某个`VueX`的方法过程中需要向后端请求时或者说出现异步操作时，需要`dispatch` VueX中`actions`的方法，以保证数据的同步。可以说，`action`的存在就是为了让`mutations`中的方法能在异步操作中起作用。
+
+如果没有异步操作，那么我们就可以直接在组件内提交状态中的`Mutations`中自己编写的方法来达成对`state`成员的操作。注意，`1.3.3节`中有提到，不建议在组件中直接对`state`中的成员进行操作，这是因为直接修改(例如：`this.$store.state.name = 'hello'`)的话不能被`VueDevtools`所监控到。
+
+
+
+最后被修改后的state成员会被渲染到组件的原位置当中去。
+
+
+
+### **state属性**
+
+​    在配置文件store/index.js中，比如初始化设置两个状态 StudNum，StudScore
+
+```js
+import Vue from 'vue'
+import Vuex from 'vuex'
+Vue.use(Vuex); 
+ 
+const state = {      
+    StudNum:3, // 初始化一个状态，存放学生人数
+    StudScore:[ // 初始化一个状态，存放学生的分数信息
+        {name:'小敏',score:80},
+        {name:'小花',score:90},
+        {name:'小红',score:98}
+    ]
+}
+ 
+const store = new Vuex.Store({
+   state
+})
+export default store
+```
+
+在组件中获取两个状态的值：this.$store.state.xxx
+
+```html
+<template>
+<div>
+    <h4>直接使用状态值</h4>
+    <p>学生人数：{{$store.state.StudNum}}</p>
+    <p v-for="(item,index) in $store.state.StudScore" :key="index">
+        姓名：{{item.name}} | 分数：{{item.score}}
+    </p>
+<!------------------------->
+    <h4>通过计算属性获取</h4>
+    <p>学生人数：{{StudNum}}</p>
+    <p v-for="(item,index) in StudScore" :key="index">
+        姓名：{{item.name}} | 分数：{{item.score}}
+    </p>
+</div>
+</template>
+<script>
+export default{
+    computed:{ // 计算属性
+        StudNum(){
+             return this.$store.state.StudNum
+        },
+        StudScore(){
+             return this.$store.state.StudScore
+        },
+    }
+}
+</script>
+```
+
+`mapState` 辅助函数
+
+​    当一个组件需要获取多个状态时候，将这些状态都声明为计算属性会有些重复和冗余。为了解决这个问题，我们可以使用 `mapState` 辅助函数帮助我们生成计算属性，让你少按几次键。上面计算属性获取状态值用辅助函数可写法如下：
+
+```html
+<template>
+<div>
+    <h4>通过计算属性获取</h4>
+    <p>学生人数：{{StudNum}}</p>
+    <p v-for="(item,index) in StudScore" :key="index">
+        姓名：{{item.name}} | 分数：{{item.score}}
+    </p>
+</div>
+</template>
+<script>
+// 在单独构建的版本中辅助函数为 Vuex.mapState
+import { mapState } from 'vuex'
+export default {
+    data(){
+        return{
+              localCount:12
+        }
+    },
+    computed: mapState({
+        StudNum: state => state.StudNum,  // 箭头函数可使代码更简练
+        StudScore: 'StudScore',           // 可也传字符串参数 'StudScore' 等同于 `state =>state.StudScore
+        nweNum(state) {  // 为了能够使用 `this` 获取局部状态，必须使用常规函数纠正this指向
+            return state.count + this.localCount
+        }
+    })
+}
+</script>
+```
+
+当映射的计算属性的名称与 state 的子节点名称相同时，我们也可以给 `mapState` 传一个字符串数组,上例中的计算属性StudNum，StudScore跟state中的子节点状态名相同，因此可简写成如下写法：
+
+```
+computed: mapState([
+  'StudNum',   // 映射 this.StudNum为 this.$store.state.StudNum
+  'StudScore'  // 映射 this.StudScore为 this.$store.state.StudScore
+])
+```
+
+**对象展开运算符**
+
+   mapState 函数返回的是一个对象。我们如何将它与局部计算属性混合使用呢？通常，我们需要使用一个工具函数将多个对象合并为一个，以使我们可以将最终对象传给 computed 属性。但是自从有了对象展开运算符（现处于 ECMAScript 提案 stage-4 阶段），我们可以极大地简化写法：后面讲解案例用到辅助函数时都会用这种方法，也推荐使用这种写法来使用辅助函数。当然使用辅助函数也不是必须的，对于单个组件中用到的状态比较多时，使用辅助函数是个很好的选择，能极大的简化代码。具体写法如下：
+
+```js
+computed: {
+  localComputed () { // 组件中的其他计算属性
+       return 23
+  },
+  ...mapState([  // 使用对象展开运算符将此对象混入到外部对象中
+      'StudNum',   // 映射 this.StudNum为 this.$store.state.StudNum
+      'StudScore'  // 映射 this.StudScore为 this.$store.state.StudScore
+  ])
+}
+```
+
+
+
+###  Mutations
+
+`mutations`是操作`state`数据的方法的集合，比如对该数据的修改、增加、删除等等。更改store中的状态
+
+####  Mutations使用方法
+
+`mutations`方法都有默认的形参：
+
+(**[state]** **[,payload]**)
+
+- `state`是当前`VueX`对象中的`state`
+- `payload`是该方法在被调用时传递参数使用的
+
+
+
+例如，我们编写一个方法，当被执行时，能把下例中的name值修改为`"jack"`,我们只需要这样做
+
+```js
+import Vue from 'vue'
+import Vuex from 'vuex'
+
+Vue.use(Vuex)
+
+const store = new Vuex.store({
+    state:{
+        name:'helloVueX'
+    },
+    mutations:{
+        //es6语法，等同edit:funcion(){...}
+        edit(state){
+            state.name = 'jack'
+        }
+    }
+})
+
+export default store
+```
+
+而在组件中，我们需要这样去调用这个`mutation`——例如在App.vue的某个`method`中:
+
+```js
+this.$store.commit('edit')
+```
+
+当需要多参提交时，推荐把他们放在一个对象中来提交:
+
+```
+this.$store.commit('edit',{age:15,sex:'男'})
+```
+
+接收挂载的参数：
+
+```js
+        edit(state,payload){
+            state.name = 'jack'
+            console.log(payload) // 15或{age:15,sex:'男'}
+        }
+```
+
+**另一种提交方式**
+
+```js
+this.$store.commit({
+    type:'edit',
+    payload:{
+        age:15,
+        sex:'男'
+    }
+})
+```
+
+#### 增删state中的成员
+
+为了配合Vue的响应式数据，我们在Mutations的方法中，应当使用Vue提供的方法来进行操作。如果使用`delete`或者`xx.xx = xx`的形式去删或增，则Vue不能对数据进行实时响应。
+
+- Vue.set 为某个对象设置成员的值，若不存在则新增
+
+  例如对state对象中添加一个age成员
+
+```js
+Vue.set(state,"age",15)
+```
+
+Vue.delete 删除成员
+
+将刚刚添加的age成员删除
+
+```js
+Vue.delete(state,'age')
+```
+
+
+
+#### ==**项目中**==：
+
+```js
+const mutations={
+    ChangeStudScore(state,obj) {   //自定义改变state初始值的方法，这里面的参数除了state之外还可以再传额外的参数(变量或对象);
+        state.StudNum = obj.length; // 更改状态StudNum 的值
+        state.StudScore = obj; // 更改状态StudScore 的值
+    }
+```
+
+
+
+```js
+ methods: {
+        ...mapMutations([// 使用辅助函数 mapMutations
+            "ChangeStudScore" // 映射 this.ChangeStudScore(obj)为 this.$store.commit("ChangeStudScore", obj)
+        ]),
+        add() { // 点击按钮，设置状态的值
+            let obj = [
+                {name: '张三',score: 93},
+                {name: '李四',score: 90},
+                {name: '王五',score: 98},
+                {name: '赵六',score: 70},
+            ]
+            //this.$store.commit("ChangeStudScore", obj) // 不使用辅助函数时的写法
+            this.ChangeStudScore(obj)// 使用辅助函数时的写法
+        }
+```
+
+
+
+使用常量替代 Mutation 事件类型( 直接复制官网,实际开发中没用过 )
+
+
+
+使用常量替代 mutation 事件类型在各种 Flux 实现中是很常见的模式。这样可以使 linter 之类的工具发挥作用，同时把这些常量放在单独的文件中可以让你的代码合作者对整个 app 包含的 mutation 一目了然：
+
+```js
+// mutation-types.js
+export const SOME_MUTATION = 'SOME_MUTATION'
+```
+
+
+
+```js
+// store.js
+import Vuex from 'vuex'
+import { SOME_MUTATION } from './mutation-types'
+ 
+const store = new Vuex.Store({
+  state: { ... },
+  mutations: {
+    // 我们可以使用 ES2015 风格的计算属性命名功能来使用一个常量作为函数名
+    [SOME_MUTATION] (state) {
+      // mutate state
+    }
+  }
+})
+```
+
+
+
+### Getters（三种派生）
+
+可以对state中的成员加工后传递给外界
+
+Getters中的方法有两个默认参数
+
+- state 当前VueX对象中的状态对象
+- getters 当前getters对象，用于将getters下的其他getter拿来用
+
+例如
+
+```js
+getters:{
+    nameInfo(state){
+        return "姓名:"+state.name
+    },
+    fullInfo(state,getters){
+        return getters.nameInfo+'年龄:'+state.age
+    }  
+}
+```
+
+组件中调用
+
+```js
+this.$store.getters.fullInfo
+```
+
+
+
+前面说了，getters不是必须的，那么什么时候会用到呢？有时候我们需要从 store 中的 state 中派生出一些状态（对state进行计算过滤等操作），例如上例，我们在getters中从state的子节点StudScore里派生出两个状态：90分以上的学生以及其数量：
+
+```js
+import Vue from 'vue'
+import Vuex from 'vuex'
+Vue.use(Vuex); 
+ 
+const state = {      
+    StudNum:2, // 初始化一个状态，代表学生人数
+    StudScore:[ // 初始化一个状态，存放学生的分数信息
+        {name:'小敏',score:80},
+        {name:'小花',score:90},
+        {name:'小红',score:98}
+    ]
+}
+const getters = {
+    // 获取分数为90分以上的学生
+    perfect: state => { // 过滤分数，获取90分及以上的学生
+        return state.StudScore.filter(Stud => Stud.score>=90)
+    },
+    // 获取分数为90分以上的学生数量
+    perfectNum: (state,getters) => { // getters 也可以接受其他 getters 作为第二个参数
+        return getters.perfect.length
+    }
+};
+ 
+const store = new Vuex.Store({
+   state,
+   getters
+})
+export default store
+ 
+```
+
+在组件中获取getters派生的两个状态的值：this.$store.getters.xxx
+
+```html
+<template>
+<div>
+    <h4>state原始状态</h4>
+    <p>学生人数：{{$store.state.StudNum}}</p>
+    <p v-for="(item,index) in $store.state.StudScore" :key="index">
+        姓名：{{item.name}} | 分数：{{item.score}}
+    </p>
+<!------------------------->
+    <h4>getters 派生的状态 通过属性访问</h4>
+    <p>优秀学生人数：{{$store.getters.perfectNum}}</p>
+    <p v-for="(item,index) in $store.getters.perfect" :key="index">
+        姓名：{{item.name}} | 分数：{{item.score}}
+    </p>
+</div>
+</template>
+<script>
+import { mapState } from 'vuex'
+export default{
+    computed:{
+        ...mapState([  // 使用辅助函数 mapState 
+            'StudNum',   // 映射 this.StudNum为 this.$store.state.StudNum
+            'StudScore'  // 映射 this.StudScore为 this.$store.state.StudScore
+        ])
+    }
+}
+</script>
+```
+
+从上面例子可以看出，使用getters我们从state子节点StudScore中派生了两个新的状态，这两个派生出的新状态不用在state中进行初始化，**这是getters以属性的形式返回的情况，getters也可以返回一个函数，通过函数来访问getters，我们紧接着上面的例子，在getters中再派生出一个状态**：checkScore 通过分数找出学生信息，它返回的是一个函数，如下：
+
+```js
+...
+const getters = {
+    ....
+    // 用分数查询学生信息
+    checkScore:state=>n=>{ // 返回一个方法函数
+        return state.StudScore.find(Stud=> Stud.score=== n)
+    }
+}
+...
+```
+
+在组件中通过方法访问getters派生的状态：`this.$store.getters.xxx( val ) `
+
+```html
+<template>
+<div>
+<!------------------------->
+    <h4>getters 派生的状态 通过方法访问</h4>
+    <p>有没有人得98分</p>
+    <p>{{$store.getters.checkScore(98)}}</p>
+    </div>
+</div>
+</template>
+<script>
+import { mapState } from 'vuex'
+export default{
+    computed:{
+        ...mapState([  // 使用辅助函数 mapState 
+            'StudNum',   // 映射 this.StudNum为 this.$store.state.StudNum
+            'StudScore'  // 映射 this.StudScore为 this.$store.state.StudScore
+        ])
+    }
+}
+</script>
+```
+
+
+
+ **注意，getter 在通过属性访问时是作为 Vue 的响应式系统的一部分缓存其中的，即只要对应的state状态不发生改变，不管执行多少次getters,都会从缓存中获取getters的状态值，不会重新计算，一旦对应的state发生改变，getters就会重新计算，并缓存起来。**
+
+
+
+**getter 在通过方法访问时，每次都会去进行调用，而不会缓存结果。即不管对应的状态有没有发生改变，访问一次getters,就会执行一次getters返回的函数，并且不会被缓存。**
+
+
+
+ 通过上面getters的使用，我们可以看到对状态进行计算操作，我们不一定非使用getters不可，我们也可以在组件中获取状态值，再对得到的值进行过滤计算等操作也是可以的，所以说getters不是必须的。
+
+***\*`mapGetters` 辅助函数\****
+
+`  mapGetters` 辅助函数仅仅是将 store 中的 getter 映射到局部计算属性：
+
+```javascript
+import { mapState, mapGetters } from 'vuex'
+ 
+export default {
+  computed: {
+        ...mapState([    // 使用辅助函数 mapState 
+            'StudNum',   // 映射 this.StudNum为 this.$store.state.StudNum
+            'StudScore'  // 映射 this.StudScore为 this.$store.state.StudScore
+        ]),
+        ...mapGetters([  // 使用辅助函数 mapGetters
+            'perfect',   // 映射 this.perfect为 this.$store.getters.perfect
+            'perfectNum',// 映射 this.perfectNum为 this.$store.getters.perfectNum
+            'checkScore' // 映射 this.checkScore为 this.$store.getters.checkScore()
+        ])
+  }
+}
+```
+
+
+
+如果你想将一个 getter 属性另取一个名字，使用对象形式：
+
+```
+computed: {
+    ...mapGetters({
+        P:'perfect',    // 把 `this.P` 映射为 `this.$store.getters.perfect`
+        N:'perfectNum', // 把 `this.N` 映射为 `this.$store.getters.perfectNum`
+        S:'checkScore'  // 把 `this.S()` 映射为 `this.$store.getters.checkScore()`
+    })
+}
+```
+
+### Actions
+
+Action 类似于 mutation，不同在于：
+
+1. Action 提交的是 mutation，而不是直接变更状态。
+2. Action 可以包含任意异步操作。
+
+
+
+由于直接在`mutation`方法中进行异步操作，将会引起数据失效。所以提供了Actions来专门进行异步操作，最终提交`mutation`方法。
+
+`Actions`中的方法有两个默认参数
+
+- `context` 上下文(相当于箭头函数中的this)对象
+- `payload` 挂载参数
+
+例如，我们在两秒中后执行`2.2.2`节中的`edit`方法
+
+由于`setTimeout`是异步操作，所以需要使用`actions`
+
+```js
+actions:{
+    aEdit(context,payload){
+        setTimeout(()=>{
+            context.commit('edit',payload)
+        },2000)
+    }
+}
+
+//在组件中调用:
+this.$store.dispatch('aEdit',{age:15})
+```
+
+
+
+#### 项目中
+
+```js
+const actions = {
+    AsyncChangeStudScore(context) {
+      // 模拟异步请求，5秒后获取导数据，然后触发mutations中的方法ChangeStudScore，并传值
+      setTimeout(()=>{
+          let obj = {
+                {name: '张三',score: 93},
+                {name: '李四',score: 90},
+                {name: '王五',score: 98},
+                {name: '赵六',score: 70},
+          }
+          context.commit('ChangeStudScore',obj)
+      },5000)
+ 
+    }
+}
+```
+
+
+
+```js
+<script>
+import { mapState, mapGetters, mapMutations, mapActions } from 'vuex'
+export default{
+    computed:{
+  computed: {
+        
+        ...mapState([    // 使用辅助函数 mapState 
+           'StudNum',   // 映射 this.StudNum为 this.$store.state.StudNum
+           'StudScore'  // 映射 this.StudScore为 this.$store.state.StudScore
+        ]),
+        ...mapGetters([  // 使用辅助函数 mapGetters
+            'perfect',   // 映射 this.perfect为 this.$store.getters.perfect
+            'perfectNum',// 映射 this.perfectNum为 this.$store.getters.perfectNum
+            'checkScore' // 映射 this.checkScore为 this.$store.getters.checkScore
+        ])
+  }
+    },
+    methods: {
+        ...mapActions([  // 使用辅助函数 mapMutations
+            'AsyncChangeStudScore'
+        ]),
+        add() { // 点击按钮，设置状态的值
+            //this.$store.dispatch("AsyncChangeStudScore") // 不使用辅助函数时的写法
+            this.AsyncChangeStudScore(obj)// 使用辅助函数时的写法
+        }
+    },
+}
+</script>
+
+```
+
+看官网
+
+或：https://blog.csdn.net/qq_41772754/article/details/88074103
+
 # sql
 
 1. 脏读 :脏读就是指当一个事务正在访问数据,并且对数据进行了修改,而这种修改还没有提交到数据库中,这时,另外一个事务也访问 这个数据,然后使用了这个数据。
