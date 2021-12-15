@@ -8,7 +8,7 @@
 
 
 
-# [算法笔记](algorithm\算法笔记.md)
+# [算法笔记](algorithm\algorithm_note.md)
 
 
 
