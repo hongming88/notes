@@ -1,11 +1,14 @@
 # notes
 
-#### 介绍
-进阶笔记，欢迎来学习
+
+
+# [之前的笔记博客](https://blog.csdn.net/weixin_46168350/)
 
 
 
-# [算法笔记](notes\algorithm)
+
+
+# [算法笔记](notes\algorithm\算法笔记.md)
 
 
 
