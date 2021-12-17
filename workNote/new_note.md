@@ -176,6 +176,259 @@ element form里面如果只有一个input框的时候 按回车会提交表单�
 
 
 
+# 什么时候用methods？什么时候用computed？什么时候用watch
+
+
+
+- methods是方法和原生js没区别，大多是需要我们**主动调用**(比如事件)。
+
+- computed是get 这个get有点特殊，**只要触发所依赖数据的set会自动触发get**。我们只关心get的return set由系统触发或者依赖的数据触发，官方说依赖缓存只是为了理解。**其实Date.now()这种只是系统不能触发set**，不能触发set get当然不会通知观察者。
+
+- **watch 是set 由data触发**，我们可以在set里进行自己的条件封装。
+
+  
+
+## computed
+
+
+- **computed用来监控自己定义的变量，该变量不在data里面声明，直接在computed里面定义**，然后就可以在页面上进行**双向数据绑定**展示出结果或者用作其他处理；
+- computed比较适合**对多个变量或者对象进行处理后返回一个结果值，也就是数多个变量中的某一个值发生了变化则我们监控的这个值也就会发生变化**，举例：购物车里面的商品列表和总金额之间的关系，只要商品列表里面的商品数量发生变化，或减少或增多或删除商品，总金额都应该发生变化。这里的这个总金额使用computed属性来进行计算是最好的选择
+
+
+
+**computed：**通过属性计算而得来的属性
+
+　　**1、**computed内部的函数在调用时不加()。
+
+　　**2、**computed是依赖vm中data的属性变化而变化的，也就是说，当data中的属性发生改变的时候，当前函数才会执行，data中的属性没有改变的时候，当前函数不会执行。
+
+　　**3、**computed中的函数必须用return返回。
+
+　　**4、**在computed中不要对data中的属性进行赋值操作。如果对data中的属性进行赋值操作了，就是data中的属性发生改变，从而触发computed中的函数，形成死循环了。
+
+　　**5、**当computed中的函数所依赖的属性没有发生改变，那么调用当前函数的时候会从缓存中读取。
+
+　　
+
+　　使用场景：当一个值受多个属性影响的时候------------购物车商品结算
+
+
+
+
+
+  Computed: 可以关联多个实时计算的对象，当这些对象中的其中一个改变时都会出发这个属性。具有缓存能力，**所以只有当数据再次改变时才会重新渲染，否则就会直接拿取缓存中的数据**。
+
+
+
+在Vue中**计算属性是基于它们的依赖进行缓存的，而方法是不会基于它们的依赖进行缓存的。从而使用计算属性要比方法性能更好。**
+
+
+
+这也同样意味着下面的计算属性将不再更新，因为Date.now()不是响应式依赖：
+
+```
+computed: {
+  now() {
+    return Date.now()
+  }
+}
+```
+
+
+
+在页面中使用大量或是复杂的表达式去处理数据，对页面的维护会有很大的影响。这个时候就需要用到computed 计算属性来处理复杂的逻辑运算，这样在页面中就可以简单的写成`{{bookmark}}`，computed一般是改变data或者props里面的值为己用。
+
+
+
+```js
+computed: {
+            bookmark() {
+               //这里用了es6书写方法
+                return this.$store.state.bookmarks.find(bookmark => bookmark.id === this.bookmarkId);
+            },
+}
+```
+
+
+
+```js
+<div>{{bookmark}}</div>
+```
+
+
+
+**那么计算属性的缓存有什么优势呢？**
+
+假设我们有一个性能开销比较大的计算属性 `list`，它需要遍历一个巨大的数组并做大量的计算。然后我们可能有其他的计算属性依赖于 `list`。如果没有缓存，我们将不可避免的多次执行 `list` 的 getter！
+
+我们为什么需要缓存？假设我们有一个性能开销比较大的计算属性 **A**，它需要遍历一个巨大的数组并做大量的计算。然后我们可能有其他的计算属性依赖于 **A** 。如果没有缓存，我们将不可避免的多次执行 **A** 的 getter！**如果你不希望有缓存，请用方法来替代。**
+
+
+
+computed和method：
+
+**相同之处：** `computed` 和 `methods` 将被混入到 Vue 实例中。`vm.reversedMessage/vm.reversedMessage()` 即可获取相关计算属性/方法。
+
+
+
+### 计算属性的 Setter
+
+计算属性默认只有 getter，不过也可以去设置一个 setter，像下面一样：
+
+```js
+// ...
+computed: {
+  fullName: {
+    // getter
+    get() {
+      return this.firstName + ' ' + this.lastName
+    },
+    // setter
+    set(newValue) {
+      const names = newValue.split(' ')
+      this.firstName = names[0]
+      this.lastName = names[names.length - 1]
+    }
+  }
+}
+// ...
+
+```
+
+当我们运行 `this.fullName = '小 帅'` 时，setter 会被调用，`this.firstName` 和 `this.lastName` 也会相应地被更新。
+
+这个setter我还很少的在项目中会使用得到，大家会在什么时候能够用到呢，欢迎提供素材。
+
+
+
+## watch
+
+　　刚开始总是傻傻分不清到底在什么时候使用watch，什么时候使用computed。这里大致说一下自己的理解：
+
+- watch主要用于监控vue实例的变化，它监控的变量当然必须在data里面声明才可以，它可以监控一个变量，也可以是一个对象，但是我们不能类似这样监控，比如：
+
+```
+watch:{
+goodsList.price(newVal,oldVal){
+    //监控商品列表中是商品价格
+}
+}
+```
+
+这样会报错。只能监控整个对象或单个变量，如下所示：
+
+```js
+data(){
+　　　　　　　　return {
+　　　　　　　　　　example0:"",
+　　　　　　　　　　example1:"",
+　　　　　　　　　　example2:{
+ 　　　　　　　　　　　　inner0:1, 　　　　　　　　　
+                        　　　innner1:2 　　　　　　　　　
+                    　}
+　　　　　　}
+　　　　},
+watch:{
+　example0(newVal,oldVal){//监控单个变量
+           ……
+   }，example2(newVal,oldVal){//监控对象
+           ……
+   }，
+}
+```
+
+- watch一般用于监控路由、input输入框的值特殊处理等等，它比较适合的场景是一个数据影响多个数据
+
+
+
+
+
+**watch：**属性监听
+
+　　**1、**watch中的函数名称必须要和data中的属性名一致，因为watch是依赖data中的属性，当data中的属性发生改变的时候，watch中的函数就会执行。
+
+　　**2、**watch中的函数有两个参数，前者是newVal，后者是oldVal。
+
+　　**3、**watch中的函数是不需要调用的。
+
+　　**4、**watch只会监听数据的值是否发生改变，而不会去监听数据的地址是否发生改变。也就是说，watch想要监听引用类型数据的变化，需要进行深度监听。"obj.name"(){}------如果obj的属性太多，这种方法的效率很低，obj:{handler(newVal){},deep:true}------用handler+deep的方式进行深度监听。
+
+　　**5、**特殊情况下，watch无法监听到数组的变化，特殊情况就是说更改数组中的数据时，数组已经更改，但是视图没有更新。更改数组必须要用splice()或者$set。this.arr.splice(0,1,100)-----修改arr中第0项开始的1个数据为100，this.$set(this.arr,0,100)-----修改arr第0项值为100。
+
+　　**6、**immediate:true  页面首次加载的时候做一次监听。
+
+ 
+
+　　使用场景：当一条数据的更改影响到多条数据的时候---------搜索框
+
+
+
+
+
+watch：一个数据影响多个数据。适合监控场景，某【一个】变量改变时需要做什么操作；类似于onchange，适合耗时操作，如网络请求等。
+
+computed：一个数据受多个数据影响。某【一些】变量发生变化时，影响的【单个】结果对应地发生改变。
+
+
+
+根据Vue官方文档的定义
+
+> 当需要在数据变化时执行异步或开销较大的操作时，这个方式是最有用的。
+>
+> 
+
+使用 `watch` 可以让我们调用异步的API来获取数据，并用`getting`属性来控制数据状态，这些使用计算属性是无法做到的。
+
+### 使用
+
+> 首先我们理解下watch的使用首先确认 watch是一个对象，一定要当成对象来用。对象就有键，有值。
+> 键：就是你要监控的那个家伙，比如说$route，这个就是要监控路由的变化。或者是data中的某个变量。
+> **值可以是函数**：就是当你监控的家伙变化时，需要执行的函数，这个函数有两个形参，第一个是当前值，第二个是变化后的值。
+> **值也可以是函数名**：不过这个函数名要用单引号来包裹。第三种情况厉害了。
+> **值是包括选项的对象**：选项包括有三个。
+> 1.第一个handler：其值是一个回调函数。即监听到变化时应该执行的函数。
+> 2.第二个是deep：其值是true或false；确认是否深入监听。（一般监听时是不能监听到对象属性值的变化的，数组的值变化可以听到。）
+> 3.第三个是immediate：其值是true或false；`确认是否以当前的初始值执行handler的函数。`
+> 
+
+```js
+  watch: {
+    userInfo: {
+      handler (val, oldVal) {
+        this.oldUser = oldVal || val
+      },
+      deep: true,
+      immediate: true
+    }
+  }
+```
+
+
+
+里面的deep设为了true，这样的话，如果修改了这个userInfo中的任何一个属性，都会执行handler这个方法。
+
+
+
+## 其他
+
+methods是方法和原生js没区别，大多是需要我们主动调用（比如事件）。
+computed是get 这个get有点特殊，只要触发所依赖数据的set会自动触发get。我们只关心get的return set由系统触发或者依赖的数据触发，官方说依赖缓存只是为了理解。其实Date.now()这种只是系统不能触发set，不能触发set get当然不会通知观察者。
+watch 是set 由data触发，我们可以在set里进行自己的条件封装。
+
+**区别：**
+
+　　**1、**功能上：computed是计算属性，watch是监听一个值的变化，然后执行对应的回调。
+
+　　**2、**是否调用缓存：computed中的函数所依赖的属性没有发生变化，那么调用当前的函数的时候会从缓存中读取，而watch在每次监听的值发生变化的时候都会执行回调。
+
+　　**3、**是否调用return：computed中的函数必须要用return返回，watch中的函数不是必须要用return。
+
+　　**4、**使用场景：computed----当一个属性受多个属性影响的时候，使用computed-------购物车商品结算。watch----当一条数据影响多条数据的时候，使用watch-------搜索框。
+
+
+
+
+
 ## VueX中的核心内容
 
 在VueX对象中，其实不止有`state`,还有用来操作`state`中数据的方法集，以及当我们需要对`state`中的数据需要加工的方法集等等成员。
@@ -811,6 +1064,46 @@ export default{
 
 或：https://blog.csdn.net/qq_41772754/article/details/88074103
 
+
+
+# 其他
+
+[favicon.ico (64×64) (baidu.com)](https://www.baidu.com/favicon.ico)
+
+
+
+## 关于vue修饰符.sync
+
+[vue](https://so.csdn.net/so/search?from=pc_blog_highlight&q=vue)是单项数据流，所以要对他进行双向数据绑定的时候需要用到.sync修饰符，最常用的是**visible.sync**在子组件里写：`this.$emit(‘update:visible’, visible)`， 使用`update:my-prop-name `的模式触发事件父组件里：
+
+```html
+<components :visible="isVisible" @update:visible="val=>isVisible=val"></components>
+//简写
+<components :visible.sync="isVisible"></components>
+
+```
+
+子组件：
+
+```js
+this.$emit('update:visible', visible)
+```
+
+作用
+
+：**当一个子组件改变了一个 prop 的值时，这个变化也会同步到父组件中所绑定**
+
+
+
+## vue中 关于$emit的用法
+
+1、父组件可以使用 props 把数据传给子组件。
+2、子组件可以使用 $emit,让父组件监听到自定义事件 。
+
+vm.$emit( event, arg ) //触发当前实例上的事件
+
+vm.$on( event, fn );//监听event事件后运行 fn； 
+
 # sql
 
 1. 脏读 :脏读就是指当一个事务正在访问数据,并且对数据进行了修改,而这种修改还没有提交到数据库中,这时,另外一个事务也访问 这个数据,然后使用了这个数据。
@@ -1279,3 +1572,7 @@ support主要包含的是回邮件和找问题  用户报告的就是
 
 
 support case主要是解答客户疑问
+
+
+
+HL desgin ： high level desgin ，是PD来搞的，应该是她们design完成了
