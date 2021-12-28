@@ -1575,3 +1575,28 @@ support case主要是解答客户疑问
 
 
 HL desgin ： high level desgin ，是PD来搞的，应该是她们design完成了
+
+
+
+版本过程：
+
+一般来说是三个星期一个大一点的版本 =》pp
+一个星期的大部分是bug fix 的小版本=》pp
+三个星期，一周开发，一周内部测试，一周用户测试=》pp
+
+
+
+内部测试就是PP的测试，我们一起的PP(DEV)， PP(PD),不是有这些review么
+
+
+
+dev是内部人员测，pd是pd来测
+
+用户测试是合作方的用户来PP上来测
+
+
+
+PP的永远是release版本和prod一致，连环境都搭建的一样
+
+PP=》prod :小版本当前星期就上了，大版本一两个星期后
+
