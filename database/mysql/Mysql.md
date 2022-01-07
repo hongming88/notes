@@ -1,8 +1,8 @@
 # 逻辑架构
 
-<img src="..\..\pics\database\Mysql\逻辑架构2.png" style="zoom:45%;" />
+<img src="..\..\pics\database\mysql\逻辑架构2.png" style="zoom:45%;" />
 
-<img src="..\..\pics\database\Mysql\逻辑架构.png" style="zoom:75%;" />
+<img src="..\..\pics\database\mysql\逻辑架构.png" style="zoom:75%;" />
 
 
 
@@ -49,7 +49,7 @@ SELECT VERSION() ; SHOW ENGINES ;
 
 ## **MySQL查询过程**
 
-<img src="..\..\pics\database\Mysql\查询过程.png" style="zoom:44%;" />
+<img src="..\..\pics\database\mysql\查询过程.png" style="zoom:44%;" />
 
 
 
@@ -97,7 +97,7 @@ SELECT VERSION() ; SHOW ENGINES ;
 在数据之外，数据库系统还维护着满足特定查找算法的数据结构，这些数据结构以某种方式引用(指向）数据，这样就可以在这些数据结构上实现高级查找算法。这种数据结构，就是索引。下图就是**一种可能的索引方式**示例：
 
 
-![](..\..\pics\database\Mysql\索引1.jpg)
+![](..\..\pics\database\mysql\索引1.jpg)
 
 
 
@@ -142,7 +142,6 @@ SELECT VERSION() ; SHOW ENGINES ;
 - 主键索引:设定为主键后数据库会自动建立索引，innodb为聚簇索引
 - 复合索引：即一个索引包含多个列。
 - 基本语法：
-  
 
 | 操作                                       | 命令                                                         |
 | ------------------------------------------ | ------------------------------------------------------------ |
@@ -193,7 +192,6 @@ SELECT VERSION() ; SHOW ENGINES ;
 - `CPU`：CPU在饱和的时候一般发生在数据装入内存或从磁盘上读取数据时候
 - `IO`：磁盘I/O瓶颈发生在装入数据远大于内存容量的时候
 - 服务器硬件的性能瓶颈：top，free，iostat和vmstat来查看系统的性能状态
-  
 
 ## **explain使用简介**
 使用EXPLAIN关键字可以模拟优化器执行SQL查询语句，从而知道MySQL是如何处理你的SQL语句的。分析你的查询语句或是表结构的性能瓶颈。
@@ -208,7 +206,6 @@ SELECT VERSION() ; SHOW ENGINES ;
 - 哪些索引被实际使用
 - 表之间的引用
 - 每张表有多少行被优化器查询
-  
 
 **怎么玩**
 
@@ -258,15 +255,15 @@ select查询的序列号，包含一组数字，表示查询中执行select子�
 
 ①**id相同，执行顺序由上至下**
 
-![](..\..\pics\database\Mysql\explain_id1.jpg)
+![](..\..\pics\database\mysql\explain_id1.jpg)
 
 ②**id 不同，id 不同，如果是子查询，id 的序号会递增，id 值越大优先级越高，越先被执行**
 
-![](..\..\pics\database\Mysql\explain_id2.jpg)
+![](..\..\pics\database\mysql\explain_id2.jpg)
 
 ③id 如果相同，可以认为是一组，从上往下顺序执行；**在所有组中，id 值越大，优先级越高**，越先执行衍生= DERIVED
 
-![](..\..\pics\database\Mysql\explain_id3.jpg)
+![](..\..\pics\database\mysql\explain_id3.jpg)
 
 关注点：<font color="red">id 号每个号码，表示一趟独立的查询。一个sql 的查询趟数越少越好。</font>
 
@@ -419,7 +416,7 @@ where子句的值总是false，不能用来获取任何元组。
 
 ## explain之热身Case
 
-![](..\..\pics\database\Mysql\explain_Case.png)
+![](..\..\pics\database\mysql\explain_Case.png)
 
 第一行（执行顺序4）：id列为1，表示是union里的第一个select，select_type列的primary表示该查询为外层查询，table列被标记为，表示查询结果来自一个衍生表，其中derived3中3代表该查询衍生自第三个select查询，即id为3的select。`【select d1.name… 】`
 
