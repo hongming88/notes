@@ -2,7 +2,7 @@
 
 ## 各个名词介绍
 
-![](..\..\pics\SpringCloud\MQ\消息中间件RabbitMQ.jpg)
+![](..\..\pics\springcloud\mq\消息中间件RabbitMQ.jpg)
 
 `Broker`：接收和分发消息的应用，RabbitMQ Server 就是 Message Broker
 `Virtual host`：出于多租户和安全因素设计的，把 AMQP 的基本组件划分到一个虚拟的分组中，类似于网络中的 namespace 概念。当多个不同的用户使用同一个 RabbitMQ server 提供的服务时，可以划分出多个 vhost，每个用户在自己的 vhost 创建 exchange／queue 等
