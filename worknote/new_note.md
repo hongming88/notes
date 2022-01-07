@@ -1109,7 +1109,23 @@ vm.$on( event, fn );//监听event事件后运行 fn；
 
 会扔到当前事件队列的最后面。
 
+## @change
 
+```
+<el-switch v-model='inputForm[config].enable'
+           @change='() => {enableJudge(config)}'></el-switch>
+```
+
+这个是elementui的组件，<font color="red">所以changge是固定的，传的是事件，然后加=>是扩大作用范围</font>
+
+
+
+=>这里也可以写成`function(){}`一样的效果 
+只是外面要保存this 因为 =》 <font color="red">是让里面的子作用域的this等于外面作用域的this </font>
+
+如果是function的写法，this就指向function自己 而enableJodge这方法是vue对象的也就是外面的this里面的 所以如果写function(){}, 要在外面const self = this来保存外面的this在function里面调用self.enableJodge(config)
+
+`@change = 'const self = this;(function(){self.enableJodge(config)})()'`
 
 
 
