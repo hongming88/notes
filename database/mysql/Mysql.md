@@ -435,31 +435,146 @@ id,type,key,rows Extra最重要了
 
 
 
+# 索引优化
+
+## 索引单表优化案例
+
+type变成了range，这是可以忍受的。但是extra里使用Using filesort仍是无法接受的。
+
+但是我们已经建立了索引，为啥没用呢？
+
+这是因为按照BTree索引的工作原理，先排序category_id，如果遇到相同的category_id则再排序comments,如果遇到相同的comments 则再排序views。
+
+当comments字段在联合索引里处于中间位置时，因comments > 1条件是一个范围值(所谓range)，MySQL无法利用索引再对后面的views部分进行检索，即range类型查询字段后面的索引无效。
+
+
+## 索引两表优化案例
+
+**小结**
+
+索引两表优化，<font color="red">左连接右表建索引，右连接左表建索引。</font>
+
+主表不管加不加都会全表扫描
+
+## 索引三表优化案例
+
+
+
+Join语句的优化
+
+尽可能减少Join语句中的NestedLoop的循环总次数，不要join过多或者嵌套；<font color="red">“永远用小结果集驱动大的结果集”。</font>
+
+优先优化NestedLoop的内层循环，保证Join语句中被驱动表上Join条件字段已经被索引。
+
+当无法保证被驱动表的Join条件字段被索引且内存资源充足的前提下，不要太吝惜JoinBuffer的设置。
 
 
 
 
 
 
+# 其他知识
+
+```
+#创建用户
+create user "ming"@"%" identified by "xxxx";
+#修改密码
+alter user'root'@'%' IDENTIFIED BY '';
+
+# 授予权限
+grant all PRIVILEGES on *.*  to 'ming"@"%'  
+
+grant all privileges on database_name.* to 'username'@'localhost';
+
+GRANT CREATE, ALTER, DROP, INSERT, UPDATE, DELETE, SELECT, REFERENCES, RELOAD on *.* TO 'ming'@'%' WITH GRANT OPTION;
+
+#启动： sudo service mysql start
+
+#关闭： sudo service mysql stop
+
+
+#步骤：
+
+mysql -u root -p
+
+SHOW DATABASES;
+
+use mysql;
+
+RENAME USER 'root'@'localhost' TO 'root'@'%';
+
+1.update user set host='%' where user='root' limit 1(两种方法都可以，选一个)
+
+2.grant all privileges on.to ‘root’@’%’ identified by ‘abc.123’ with grant option;
+
+flush privileges;
+
+select user,authentication_string,host from user;
+```
+
+## 其他配置
+
+**查看字符集**
+
+- `show variables like 'character%";`
+- `show variables like ‘%char%";`
+
+**数据文件**
+
+两系统
+
+- windows
+  输入mysql后select @@database;
+
+- linux
+  默认路径：/var/lib/mysql
 
 
 
+frm文件（form）
+
+- 存放表结构
 
 
 
+myd文件（my data）
+
+- 存放表数据
 
 
 
+myi文件（my index）
+
+- 存放表索引
+  
+  
 
 
 
+```
+1、加入开机启动
+systemctl enable mysqld
 
+2、启动mysql服务进程
+systemctl start mysqld
 
+# 设置开机启动mysql
+[root@VM-16-2-centos ~]# chkconfig mysql on
 
+# 2,3,4,5 启动就可以
+[root@VM-16-2-centos ~]# chkconfig --list|grep mysql
 
+# 看到[*]mysql 表示开机会后会启动mysql
+[root@VM-16-2-centos ~]# ntsysv
 
+```
 
+```
+如何配置
 
+Windows - my.ini文件
+Linux - /etc/my.cnf文件
+```
 
 
 
