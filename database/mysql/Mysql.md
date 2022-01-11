@@ -375,9 +375,9 @@ rows 列显示MySQL 认为它执行查询时必须检查的行数。越少越好
 
 
 
-**覆盖索引**（Covering Index）,一说为索引覆盖。
+<font color="red"> **覆盖索引**（Covering Index）</font>,一说为索引覆盖。
 
-- 理解方式一：就是select的数据列只用从索引中就能够取得，不必读取数据行，MySQL可以利用索引返回select列表中的字段，而不必根据索引再次读取数据文件,换句话说查询列要被所建的索引覆盖。
+- 理解方式一：就是select的数据列只用从索引中就能够取得，不必读取数据行，MySQL可以利用索引返回select列表中的字段，而不必根据索引再次读取数据文件,换句话说**查询列要被所建的索引覆盖**。
 
 - 理解方式二：索引是高效找到行的一个方法，但是一般数据库也能使用索引找到一个列的数据，因此它不必读取整个行。毕竟索引叶子节点存储了它们索引的数据；当能通过读取索引就可以得到想要的数据，那就不需要读取行了。一个索引包含了（或覆盖了）满足查询结果的数据就叫做覆盖索引。
 
@@ -439,6 +439,10 @@ id,type,key,rows Extra最重要了
 
 ## 索引单表优化案例
 
+`mysql> explain SELECT id, author_id FROM article WHERE category_id = 1 AND comments = 1 ORDER BY views DESC LIMIT 1;`
+
+
+
 type变成了range，这是可以忍受的。但是extra里使用Using filesort仍是无法接受的。
 
 但是我们已经建立了索引，为啥没用呢？
@@ -470,6 +474,519 @@ Join语句的优化
 
 
 
+# 单表使用索引常见的索引失效
+
+
+
+索引失效（应该避免）
+
+1. 最佳左前缀法则 - <font color="red">如果索引了多列，要遵守最左前缀法则。**指的是查询从索引的最左前列开始并且不跳过复合索引中间列。**</font>
+
+2. 不在**索引列上做任何操作**（计算、函数、（自动or手动）类型转换），会导致索引失效而转向全表扫描。
+
+   如：`SELECT SQL_NO_CACHE * FROM emp WHERE LEFT(age,3)=30;`
+
+3. 存储引擎**不能使用索引中范围条件右边的列**。(范围之后全失效，所以范围放后面)
+
+   如：`mysql> EXPLAIN SELECT * FROM staffs WHERE NAME='July' AND age>25 AND pos='dev'`
+
+   - `这里我的理解是,age>25是需要遍历的,在遍历的过程中同时判断了pos条件,因此pos的索引就无效了`
+
+4. 尽量使用覆盖索引（只访问索引的查询（索引列和查询列一致）），减少select *。
+
+   如：
+
+   ```sql
+   explain SELECT SQL_NO_CACHE * FROM emp WHERE emp.age=30 and deptId=4 and name='XamgXt';()
+   
+   explain SELECT SQL_NO_CACHE age,deptId,name FROM emp WHERE emp.age=30 and deptId=4 and name='XamgXt';(这个有use index)
+   ```
+
+5. mysql在使用不等于（!=或者<>）的时候**无法使用索引会导致全表扫描。**
+
+   例如：`mysql> EXPLAIN SELECT * FROM staffs WHERE NAME is not null;`
+
+6. 字段的is null, is not null 也无法使用索引。
+
+7. like以通配符开头（’%abc…’），mysql索引失效会变成全表扫描的操作。
+
+8. 字符串不加单引号索引失效。
+
+9. 少用or，用它来连接时会索引失效。
+   
+
+
+
+
+
+**问题：解决like '%字符串%'时索引不被使用的方法？**
+
+用上索引（覆盖索引）
+
+**小结**
+
+解决like '%字符串%'时索引不被使用的方法？复合索引，然后覆盖索引。
+
+## 索引失效10-小总结
+
+小总结
+
+假设index(a, b, c)
+
+| where语句   | 索引是否被使用 |
+| ----------- | -------------- |
+| where a = 3 | Y，使用到a     |
+|where a = 3 and b = 5	|Y，使用到a，b|
+|where a = 3 and b = 5 and c = 4|Y，使用到a，b，c|
+|where b = 3 或者 where b = 3 and c = 4 或者 where c = 4|Y，使用到|
+|where a = 3 and c = 5|Y，使用到a但是c不可以，b中间断了|
+|where a = 3 and b > 4 and c = 5|Y，使用到a使用到c不能用在范围之后，b断了|
+|where a = 3 and b like ‘kk%’ and c = 4|Y，使用到a，b，c|
+## 口诀
+全职匹配我最爱，最左前缀要遵守；
+带头大哥不能死，中间兄弟不能断；
+索引列上少计算，范围之后全失效；
+LIKE 百分写最右，覆盖索引不写*；
+不等空值还有OR，索引影响要注意；
+VAR 引号不可丢，SQL 优化有诀窍。
+
+
+
+
+
+
+
+group by基本上都需要进行排序，会有临时表产生
+
+## 一般性建议
+
+- 对于单键索引，尽量选择针对当前query过滤性更好的索引。
+- 在选择组合索引的时候，当前Query中过滤性最好的字段在索引字段顺序中，位置越靠前越好。
+- 在选择组合索引的时候，尽量选择可以能够包含当前query中的where字句中更多字段的索引。
+- 尽可能通过分析统计信息和调整query的写法来达到选择合适索引的目的。
+  
+
+# 查询截取分析
+## 小表驱动大表
+
+通常SQL调优过程：
+
+1. 观察，至少跑1天，看看生产的慢SQL情况。
+2. 开启慢查询日志，设置阙值，比如超过5秒钟的就是慢SQL，并将它抓取出来。
+3. explain + 慢SQL分析。
+4. show profile。
+5. 运维经理 or DBA，进行SQL数据库服务器的参数调优。
+
+
+
+总结：
+
+1. 慢查询的开启并捕获
+2. explain + 慢SQL分析
+3. show profile查询SQL在Mysql服务器里面的执行细节和生命周期情况
+4. SQL数据库服务器的参数调优。
+
+
+优化原则：==小表驱动大表，即小的数据集驱动大的数据集。==
+
+
+
+**RBO原理**
+
+```
+select * from A where id in (select id from B)
+等价于:
+for select id from B
+for select * from A where A.id = B.id
+```
+
+**当B表的数据集必须小于A表的数据集时，用in优于exists。**
+
+```
+select * from A where exists (select 1 from B where B.id = A.id)
+等价于：
+for select * from A
+for select * from B where B.id = A.id
+```
+
+
+**当A表的数据集系小于B表的数据集时，用exists优于in。**
+
+注意：A表与B表的ID字段应建立索引。
+
+**EXISTS关键字**
+
+```
+SELECT ...FROM table WHERE EXISTS (subquery)
+```
+
+
+该语法可以理解为：将主查询的数据，放到子查询中做条件验证，根据验证结果（TRUE或FALSE）来决定主查询的数据结果是否得以保留。
+
+提示
+
+1. EXSTS(subquey)只返回TRUE或FALSE，因此子查询中的SELECT * 也可以是 SELECT 1 或select ‘X’，官方说法是实际执行时会忽略SELECT清单，因此没有区别。
+2. EXISTS子查询的实际执行过程可能经过了优化而不是我们理解上的逐条对比，如果担忧效率问题，可进行实际检验以确定是否有效率问题。
+3. EXISTS子查询往往也可以用条件表达式，其他子查询或者JOIN来替代，何种最优需要具体问题具体分析
+
+
+
+参考：https://www.cnblogs.com/emilyyoucan/p/7833769.html
+
+
+
+## 为排序使用索引OrderBy优化
+
+ORDER BY子句，尽量使用Index方式排序，避免使用FileSort方式排序
+
+
+
+MySQL支持二种方式的排序，`FileSort`和`Index`，Index效率高，它指MySQL扫描索引本身完成排序。FileSort方式效率较低。
+
+ORDER BY满足两情况，会使用Index方式排序：
+
+1. **ORDER BY语句使用索引最左前列**。
+2. **使用where子句与Order BY子句条件列组合满足索引最左前列**。
+
+
+
+```sql
+mysql> EXPLAIN SELECT * FROM tblA where age > 20 order by age;
+
+mysql> EXPLAIN SELECT * FROM tblA where age>20 order by age,birth;
+
+
+
+#Using filesort:
+
+mysql> EXPLAIN SELECT * FROM tblA where age>20 order by birth;
+
+mysql> EXPLAIN SELECT * FROM tblA where age>20 order by birth,age;
+```
+
+
+
+如果不在索引列上，mysql的filesort有两种算法：
+
+- 双路排序
+- 单路排序
+
+
+
+### **双路排序**
+
+MySQL4.1之前是使用双路排序，字面意思就是两次扫描磁盘，最终得到数据，读取行指针和OrderBy列，对他们进行排序，然后扫描已经排序好的列表，按照列表中的值重新从列表中读对应的数据输出。
+
+从磁盘取排序字段，在buffer进行排序，再从磁盘取其他字段。
+
+取一批数据，要对磁盘进行了两次扫描，众所周知，I\O是很耗时的，所以在mysql4.1之后，出现了第二种改进的算法，就是单路排序。
+
+
+
+### **单路排序**
+
+从磁盘读取查询需要的所有列，按照order by列在buffer对它们进行排序，然后扫描排序压的列表进行输出，它的效率更快一些，避免了第二次读取数据。并且把随机IO变成了顺序IO,但是它会使用更多的空间，因为它把每一行都保存在内存中了。
+
+### **结论及引申出的问题**
+
+由于单路是后出的，总体而言好过双路
+
+但是用单路有问题
+
+在sort_buffer中，方法B比方法A要多占用很多空间，因为方法B是把所有字段都取出,所以有可能取出的数据的总大小超出了sort_buffer的容量，导致每次只能取sort_buffer容量大小的数据，进行排序（创建tmp文件，多路合并)，排完再取取
+sort_buffer容量大小，再排……从而多次I/O。
+
+本来想省一次I/O操作，反而导致了大量的I/O操作，反而得不偿失。
+
+
+
+单路排序会把所有需要查询的字段都放到 sort buffer 中，而双路排序只会把主键 和需要排序的字段放到 sort buffer 中进行排序，然后再通过主键回到原表查询需要的字段
+
+
+
+### **优化策略**
+
+- 增大sort_buffer_size参数的设置
+- 增大max_length_for_sort_data参数的设置
+
+
+
+**为什么设置sort_buffer_size、max_length_for_sort_data参数能优化排序？**
+
+提高Order By的速度
+
+1. Order by时select * 是一个大忌只Query需要的字段，这点非常重要。在这里的影响是;
+   - 当Query的字段大小总和小于max_length_for_sort_data而且排序字段不是TEXT|BLOB类型时，会用改进后的算法——单路排序，否则用老算法——多路排序。
+   - 两种算法的数据都有可能超出sort_buffer的容量，超出之后，会创建tmp文件进行合并排序，导致多次IO，但是用单路排序算法的风险会更大一些，所以要提高sort_buffer__size。
+     
+
+2. 尝试提高sort_buffer_size，不管用哪种算法，提高这个参数都会提高效率，当然，要根据系统的能力去提高，因为这个参数是针对每个进程的。
+3. 尝试提高max_length_for_sort_data，提高这个参数，会增加用改进算法的概率。但是如果设的太高，数据总容量超出sort_buffer_size的概率就增大，明显症状是高的磁盘I/O活动和低的处理器使用率。
+   
+
+### **小结**
+为排序使用索引
+
+- MySql两种排序方式∶文件排序 或 扫描有序索引排序
+- MySql能为 排序 与 查询 使用相同的索引
+  
+
+### 案例
+
+创建复合索引 a_b_c (a, b, c)
+
+order by能使用索引最左前缀
+
+- ORDER BY a
+- ORDER BY a, b
+- ORDER BY a, b, c
+- ORDER BY a DESC, b DESC, c DESC
+  
+
+如果WHERE使用素引的最左前缀定义为常量，则order by能使用索引
+
+- WHERE a = const ORDER BY b,c
+- WHERE a = const AND b = const ORDER BY c
+- WHERE a = const ORDER BY b, c
+- WHERE a = const AND b > const ORDER BY b, c
+
+
+
+不能使用索引进行排序
+
+- ORDER BY a ASC, b DESC, c DESC //排序不—致
+- WHERE g = const ORDER BY b, c //产丢失a索引
+- WHERE a = const ORDER BY c //产丢失b索引
+- WHERE a = const ORDER BY a, d //d不是素引的一部分
+- WHERE a in (…) ORDER BY b, c //对于排序来说,多个相等条件也是范围查询
+  
+
+## GroupBy优化与慢查询日志
+**GroupBy优化**
+
+- group by实质是先排序后进行分组，遵照索引建的最佳左前缀。
+- 当无法使用索引列，增大max_length_for_sort_data参数的设置 + 增大sort_buffer_size参数的设置。
+- where高于having，能写在where限定的条件就不要去having限定了。
+
+**慢查询日志**
+
+- MySQL的慢查询日志是MySQL提供的一种日志记录，它用来记录在MySQL中响应时间超过阀值的语句，具体指运行时间超过long_query_time值的SQL，则会被记录到慢查询日志中。
+- 具体指运行时间超过long_query_time值的SQL，则会被记录到慢查询日志中。long_query_time的默认值为10，意思是运行10秒以上的语句。
+- 由他来查看哪些SQL超出了我们的最大忍耐时间值，比如一条sql执行超过5秒钟，我们就算慢SQL，希望能收集超过5秒的sql，结合之前explain进行全面分析。
+
+
+
+**如何操作**
+默认情况下，MySQL数据库没有开启慢查询日速，需要我们手动来设置这个参数。
+
+当然，如果不是调优需要的话，一般不建议启动该参数，因为开启慢查询日志会或多或少带来一定的性能影响。慢查询日志支持将日志记录写入文件。
+
+
+**查看是否开启及如何开启**
+
+- 默认 - `SHOW VARIABLES LIKE '%slow_query_log%';`
+- 开启 - `set global slow_query_log=1;`，只对当前数据库生效，如果MySQL重启后则会失效。
+
+
+
+如果要**永久生效**，就必须修改配置文件my.cnf(其它系统变量也是如此)
+
+修改my.cnf文件，[mysqld]下增加或修改参数slow_query_log和slow_query_log_file后，然后重启MySQL服务器。也即将如下两行配置进my.cnf文件
+
+```
+slow_query_log =1
+slow_query_log_file=/var/lib/mysqatguigu-slow.log
+```
+
+关于慢查询的参数slow_query_log_file，它指定慢查询日志文件的存放路径，系统默认会给一个缺省的文件host_name-slow.log（如果没有指定参数slow_query_log_file的话）
+
+**开启了慢查询日志后，什么样的SQL才会记录到慢查询日志里面呢？**
+
+这个是由参数long_query_time控制，默认情况下long_query_time的值为10秒，命令：`SHOW VARIABLES LIKE 'long_query_time%';`
+
+
+可以使用命令修改，也可以在my.cnf参数里面修改。
+
+假如运行时间正好等于long_query_time的情况，并不会被记录下来。也就是说，在mysql源码里是判断大于long_query_time，而非大于等于。
+
+设置慢SQL阈值时间：`set global long_query_time=3;`
+
+
+**为什么设置后看不出变化？**
+
+需要重新连接或新开一个会话才能看到修改值。
+
+**记录慢SQL并后续分析**
+
+假设我们成功设置慢SQL阈值时间为3秒（`set global long_query_time=3;`）。
+
+模拟超时SQL：
+
+```
+mysql> SELECT sleep(4);
++----------+
+| sleep(4) |
++----------+
+|        0 |
++----------+
+1 row in set (4.00 sec)
+
+```
+
+日志记录：
+
+![](..\..\pics\database\Mysql\slow.png)
+
+
+
+**查询当前系统中有多少条慢查询记录**
+
+`mysql> show global status like '%Slow_queries%';`
+
+**在配置文件中设置慢SQL阈值时间**
+
+```
+#[mysqld]下配置:
+slow_query_log=1;
+slow_query_log_file=/var/lib/mysql/atguigu-slow.log
+long_query_time=3;
+log_output=FILE;
+
+```
+
+
+
+**日志分析工具mysqldumpslow**
+
+在生产环境中，如果要手工分析日志，查找、分析SQL，显然是个体力活，MySQL提供了日志分析工具mysqldumpslow。
+
+查看mysqldumpslow的帮助信息，`mysqldumpslow --help`。
+
+
+
+- s：是表示按照何种方式排序
+- c：访问次数
+- l：锁定时间
+- r：返回记录
+- t：查询时间
+- al：平均锁定时间
+- ar：平均返回记录数
+- at：平均查询时间
+- t：即为返回前面多少条的数据
+- g：后边搭配一个正则匹配模式，大小写不敏感的
+
+
+
+**工作常用参考**
+
+
+
+- 得到返回记录集最多的10个SQL：
+
+  `mysqldumpslow -s r -t 10 /var/lib/mysql/atguigu-slow.log`
+
+- 得到访问次数最多的10个SQL：
+
+  `mysqldumpslow -s c -t 10 /var/lib/mysql/atguigu-slow.log`
+
+- 得到按照时间排序的前10条里面含有左连接的查询语句：
+
+  `mysqldumpslow -s t -t 10 -g "left join" /var/lib/mysql/atguigu-slow.log`
+
+- 另外建议在使用这些命令时结合│和more 使用，否则有可能出现爆屏情况：
+
+  `mysqldumpslow -s r-t 10 /ar/lib/mysql/atguigu-slow.log | more`
+
+
+## 用Show Profile进行sql分析
+
+Show Profile是mysql提供可以用来分析当前会话中语句执行的资源消耗情况。可以用于SQL的调优的测量。
+
+[官方文档](https://dev.mysql.com/doc/refman/8.0/en/show-profile.html)
+
+默认情况下，参数处于关闭状态，并保存最近15次的运行结果。
+
+**分析步骤**
+
+1.**是否支持**，看看当前的mysql版本是否支持。
+
+`mysql> show variables like 'profiling';`
+
+默认是关闭，使用前需要开启。
+
+2.开启功能，默认是关闭，使用前需要开启。
+
+`set profiling=on;`
+
+3.**运行SQL**
+
+4.**查看结果**，`show profiles;`
+
+```
+mysql> show profiles;
++----------+------------+-----------------------------------------------+
+| Query_ID | Duration   | Query                                         |
++----------+------------+-----------------------------------------------+
+|        1 | 0.00204000 | show variables like 'profiling'               |
+|        2 | 0.55134250 | select * from emp group by id%10 limit 150000 |
+|        3 | 0.56902000 | select * from emp group by id%20 order by 5   |
++----------+------------+-----------------------------------------------+
+3 rows in set, 1 warning (0.00 sec)
+
+```
+
+
+
+5.诊断SQL，`show profile cpu,block io for query 上一步前面的问题SQL数字号码;`
+
+`mysql> show profile cpu,block io for query 3;`
+
+参数备注
+
+- ALL：显示所有的开销信息。
+- BLOCK IO：显示块lO相关开销。
+- CONTEXT SWITCHES ：上下文切换相关开销。
+- CPU：显示CPU相关开销信息。
+- IPC：显示发送和接收相关开销信息。
+- MEMORY：显示内存相关开销信息。
+- PAGE FAULTS：显示页面错误相关开销信息。
+- SOURCE：显示和Source_function，Source_file，Source_line相关的开销信息。
+- SWAPS：显示交换次数相关开销的信息。
+
+
+
+6.日常开发需要注意的结论
+
+- converting HEAP to MyISAM 查询结果太大，内存都不够用了往磁盘上搬了。
+- Creating tmp table 创建临时表，拷贝数据到临时表，用完再删除
+- Copying to tmp table on disk 把内存中临时表复制到磁盘，危险!
+  locked
+
+
+## 全局查询日志
+
+永远不要在生产环境开启这个功能。
+
+配置文件启用。在mysql的my.cnf中，设置如下
+
+```
+#开启
+general_log=1
+#记录日志文件的路径
+general_log_file=/path/logfile
+#输出格式
+log_output=FILE
+
+```
+
+编码启用。命令如下：
+
+- `set global general_log=1;`
+- `set global log_output='TABLE';`
+
+此后，你所编写的sql语句，将会记录到mysql库里的geneial_log表，可以用下面的命令查看
+
+`mysql> select * from mysql.general_log;`
 
 
 
@@ -511,6 +1028,8 @@ flush privileges;
 
 select user,authentication_string,host from user;
 ```
+
+
 
 ## 其他配置
 
