@@ -91,7 +91,7 @@ public T get() {
 
 
 
-![](\pics\Strong.png)
+![](pics\Strong.png)
 
  假设在业务代码中使用完ThreadLocal ，threadLocal Ref被回收了。
 
@@ -108,7 +108,7 @@ public T get() {
 
  此时ThreadLocal的内存图（实线表示强引用，虚线表示弱引用）如下：
 
-![](\pics\weak.png)
+![](pics\weak.png)
 
  同样假设在业务代码中使用完ThreadLocal ，threadLocal Ref被回收了。
 
